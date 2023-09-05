@@ -29,7 +29,6 @@ export default function Login() {
         loginInfo
       );
       const data = await response.data;
-      console.log(data);
       if (data) {
         setInfoData(data);
         await AsyncStorage.setItem("user", JSON.stringify(data));
