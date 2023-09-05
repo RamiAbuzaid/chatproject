@@ -1,4 +1,5 @@
 import { View, Text } from "react-native";
+import { Link } from 'expo-router';
 
 export default function Chat(){
 
@@ -7,7 +8,9 @@ export default function Chat(){
             <Text>
                 Chattty
             </Text>
-
+            <Link href="/login">
+            to chat
+        </Link>
         </View>
     )
 }
