@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, Button } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Button,
+  Alert,
+} from "react-native";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TextInput } from "react-native-gesture-handler";
+import {
+  TextInput,
+  LongPressGestureHandler,
+  State,
+} from "react-native-gesture-handler";
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
@@ -10,11 +21,14 @@ export default function Chat() {
   const [messageInput, setMessageInput] = useState("");
   const [createMessageStatus, setCreateMessageStatus] = useState("");
   const [currentUserID, setCurrentUserID] = useState("");
+  const [removeMessage, setRemoveMessage] = useState("");
 
   const getAllMessages = useCallback(async () => {
     const userData = JSON.parse(await AsyncStorage.getItem("user"));
-    const token = userData.data.accessToken;
-    const currentUserId = userData.data._id;
+    const token = userData.data?.accessToken;
+    const currentUserId = userData?.data?._id;
+
+    console.log(userData, "ekeek");
 
     try {
       const { data } = await axios(
@@ -36,12 +50,18 @@ export default function Chat() {
   useEffect(() => {
     getAllMessages();
 
-    return () => {};
+    const chatVisible = async () => {
+      const userData = JSON.parse(await AsyncStorage.getItem("user"));
+      console.log(userData);
+
+      if (!userData.data) setMessages("");
+    };
+    chatVisible();
   }, []);
 
   const sendMessage = async () => {
     const userData = JSON.parse(await AsyncStorage.getItem("user"));
-    const token = userData.data.accessToken;
+    const token = userData.data?.accessToken;
     const message = {
       content: messageInput,
     };
@@ -63,32 +83,86 @@ export default function Chat() {
     }
   };
 
+  const deleteMessage = async () => {
+    const userData = JSON.parse(await AsyncStorage.getItem("user"));
+    const token = userData.data?.accessToken;
+    try {
+      await axios.delete(
+        `https://chat-api-with-auth.up.railway.app/messages/${removeMessage}
+    `,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      getAllMessages();
+    } catch (error) {
+      console.warn(error.message);
+    }
+  };
+
+  const handleLongPress = (evt) => {
+    if (evt.nativeEvent.state === State.ACTIVE) {
+      Alert?.alert("Delete", "Are you sure you want to delete this post?", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => deleteMessage(),
+        },
+      ]);
+    }
+  };
+
   return (
     <View>
-      <ScrollView style={{ marginBottom: 120 }}>
-        {messages?.data?.map((message) => (
-          <View key={message._id} style={styles.textContainer}>
-            <Text
-              style={
-                message?.user?._id === currentUserID
-                  ? styles.myText
-                  : message?.user?._id !== currentUserID && styles.text
-              }
-            >
-              {message.content}
-            </Text>
+      {messages?.data?.length !== 0 ? (
+        <View>
+          <ScrollView style={{ marginBottom: 120 }}>
+            {messages?.data?.map((message) => (
+              <LongPressGestureHandler
+                key={message._id}
+                onHandlerStateChange={
+                  message?.user?._id === currentUserID ? handleLongPress : ""
+                }
+              >
+                <View style={styles.textContainer}>
+                  <Text
+                    onPress={() =>
+                      setRemoveMessage(
+                        message?.user?._id === currentUserID
+                          ? message._id
+                          : null
+                      )
+                    }
+                    style={
+                      message?.user?._id === currentUserID
+                        ? styles.myText
+                        : message?.user?._id !== currentUserID && styles.text
+                    }
+                  >
+                    {message.content}
+                  </Text>
+                </View>
+              </LongPressGestureHandler>
+            ))}
+          </ScrollView>
+          <View style={styles.bottomContainer}>
+            <TextInput
+              value={messageInput}
+              placeholder="Write something..."
+              style={styles.input}
+              onChangeText={setMessageInput}
+            />
+            <Button title="Send message" onPress={sendMessage} />
           </View>
-        ))}
-      </ScrollView>
-      <View style={styles.bottomContainer}>
-        <TextInput
-          value={messageInput}
-          placeholder="Write something..."
-          style={styles.input}
-          onChangeText={setMessageInput}
-        />
-        <Button title="Send message" onPress={sendMessage} />
-      </View>
+        </View>
+      ) : (
+        <View>
+          <Text>Please log in to see this page</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -123,8 +197,18 @@ const styles = StyleSheet.create({
     fontSize: 20,
     textAlign: "right",
   },
+  notLoggedinText: {
+    textAlign: "center",
+    marginTop: 400,
+  },
   bottomContainer: {
     position: "absolute",
     bottom: 0,
+  },
+  postContainer: {
+    padding: 10,
+    backgroundColor: "white",
+    borderRadius: 5,
+    marginBottom: 10,
   },
 });
