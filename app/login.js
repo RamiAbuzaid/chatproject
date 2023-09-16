@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { View, Text, TextInput, StyleSheet, Pressable } from "react-native";
 import axios from "axios";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import { GetContent } from "./chat";
+import { useStore } from "./store/store";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -12,6 +14,9 @@ export default function Login() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const navigation = useNavigation();
+  const setHideChat = useStore((state) => state.hideChatPage)
+
+  const { getAllMessages } = GetContent();
 
   const checkIfAuth = () =>
     infoData.status === 200 &&
@@ -32,8 +37,11 @@ export default function Login() {
       if (data) {
         setInfoData(data);
         await AsyncStorage.setItem("user", JSON.stringify(data));
-      }
-      if (checkIfAuth) navigation.navigate("chat");
+        if (checkIfAuth())
+          navigation.navigate("chat");
+        }
+        getAllMessages();
+        setHideChat(false);
     } catch (error) {
       setErrorMessage(error.response?.data?.message);
     }

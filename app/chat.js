@@ -15,24 +15,19 @@ import {
   TapGestureHandler,
   State,
 } from "react-native-gesture-handler";
+import { useStore } from "./store/store";
 
-export default function Chat() {
-  const [messages, setMessages] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [messageInput, setMessageInput] = useState("");
-  const [createMessageStatus, setCreateMessageStatus] = useState("");
-  const [currentUserID, setCurrentUserID] = useState("");
-  const [removeMessage, setRemoveMessage] = useState("");
+export const GetContent = () => {
+  const setCurrentUserID = useStore((state) => state.myCurrentID);
+  const setMessages = useStore((state) => state.allMessages);
 
   const getAllMessages = useCallback(async () => {
     const userData = JSON.parse(await AsyncStorage.getItem("user"));
     const token = userData.data?.accessToken;
     const currentUserId = userData?.data?._id;
 
-    console.log(userData, "ekeek");
-
     try {
-      const { data } = await axios(
+      const response = await axios(
         "https://chat-api-with-auth.up.railway.app/messages/",
         {
           headers: {
@@ -40,29 +35,58 @@ export default function Chat() {
           },
         }
       );
+
+      const data = response.data;
       if (data) setMessages(data);
 
       setCurrentUserID(currentUserId);
     } catch (e) {
-      setErrorMessage(e.messages);
+      console.log(e.messages);
     }
   }, []);
+
+  return { getAllMessages };
+};
+
+export default function Chat() {
+  const [messageInput, setMessageInput] = useState("");
+  const [createMessageStatus, setCreateMessageStatus] = useState("");
+  const [removeMessage, setRemoveMessage] = useState("");
+
+  const hideChat = useStore((state) => state.hideChat);
+  const messages = useStore((state) => state.messages);
+  const currentUserID = useStore((state) => state.currentUserID);
+  const setHideChat = useStore((state) => state.hideChatPage);
+  const setMessages = useStore((state) => state.allMessages);
+
+  const { getAllMessages } = GetContent();
 
   useEffect(() => {
     getAllMessages();
 
     const chatVisible = async () => {
       const userData = JSON.parse(await AsyncStorage.getItem("user"));
-      console.log(userData);
+      const checkIfAuth = () =>
+        userData?.status === 200 &&
+        userData?.message === "Successfully authenticated";
 
-      if (!userData.data) setMessages("");
+      if (checkIfAuth()) {
+        console.log("funkis");
+        getAllMessages();
+        setHideChat(false);
+      } else if (!checkIfAuth()) {
+        console.log("funkis ej");
+        setHideChat(true);
+        setMessages([]);
+      }
+      getAllMessages();
     };
     chatVisible();
-  }, []);
+  }, [getAllMessages]);
 
   const sendMessage = async () => {
     const userData = JSON.parse(await AsyncStorage.getItem("user"));
-    const token = userData.data?.accessToken;
+    const token = userData?.data?.accessToken;
     const message = {
       content: messageInput,
     };
@@ -76,7 +100,7 @@ export default function Chat() {
           },
         }
       );
-      const data = await response.data;
+      const data = await response?.data;
       setCreateMessageStatus(data);
       if (data) getAllMessages();
     } catch (e) {
@@ -86,7 +110,7 @@ export default function Chat() {
 
   const deleteMessage = async () => {
     const userData = JSON.parse(await AsyncStorage.getItem("user"));
-    const token = userData.data?.accessToken;
+    const token = userData?.data?.accessToken;
     try {
       await axios.delete(
         `https://chat-api-with-auth.up.railway.app/messages/${removeMessage}
@@ -115,16 +139,17 @@ export default function Chat() {
       ]);
     }
   };
-  
+
+  useEffect(() => console.log(currentUserID, "jejejej"), [currentUserID]);
 
   return (
     <View>
-      {messages?.data?.length !== 0 ? (
+      {hideChat === false ? (
         <View>
           <ScrollView style={{ marginBottom: 120 }}>
             {messages?.data?.map((message) => (
               <TapGestureHandler
-                key={message._id}
+                key={message?._id}
                 onHandlerStateChange={
                   message?.user?._id === currentUserID ? handleSingleTap : ""
                 }
@@ -134,7 +159,7 @@ export default function Chat() {
                     onPress={() =>
                       setRemoveMessage(
                         message?.user?._id === currentUserID
-                          ? message._id
+                          ? message?._id
                           : null
                       )
                     }
@@ -144,7 +169,7 @@ export default function Chat() {
                         : message?.user?._id !== currentUserID && styles.text
                     }
                   >
-                    {message.content}
+                    {message?.content}
                   </Text>
                 </View>
               </TapGestureHandler>
