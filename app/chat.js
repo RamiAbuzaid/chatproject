@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   TextInput,
   LongPressGestureHandler,
+  TapGestureHandler,
   State,
 } from "react-native-gesture-handler";
 
@@ -102,7 +103,7 @@ export default function Chat() {
     }
   };
 
-  const handleLongPress = (evt) => {
+  const handleSingleTap = (evt) => {
     if (evt.nativeEvent.state === State.ACTIVE) {
       Alert?.alert("Delete", "Are you sure you want to delete this post?", [
         { text: "Cancel", style: "cancel" },
@@ -114,6 +115,7 @@ export default function Chat() {
       ]);
     }
   };
+  
 
   return (
     <View>
@@ -121,10 +123,10 @@ export default function Chat() {
         <View>
           <ScrollView style={{ marginBottom: 120 }}>
             {messages?.data?.map((message) => (
-              <LongPressGestureHandler
+              <TapGestureHandler
                 key={message._id}
                 onHandlerStateChange={
-                  message?.user?._id === currentUserID ? handleLongPress : ""
+                  message?.user?._id === currentUserID ? handleSingleTap : ""
                 }
               >
                 <View style={styles.textContainer}>
@@ -145,7 +147,7 @@ export default function Chat() {
                     {message.content}
                   </Text>
                 </View>
-              </LongPressGestureHandler>
+              </TapGestureHandler>
             ))}
           </ScrollView>
           <View style={styles.bottomContainer}>
